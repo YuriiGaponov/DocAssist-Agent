@@ -9,6 +9,8 @@
 
 from fastapi import APIRouter, Request
 
+from src.models import TextRequest
+
 
 router = APIRouter()
 """
@@ -35,3 +37,8 @@ def root_endpoint(request: Request) -> dict:
             }
     """
     return {"message": "Приложение запущено"}
+
+
+@router.post("/upload-text")
+async def upload_text(request: TextRequest) -> dict:
+    return {'text': request.text}
