@@ -41,9 +41,12 @@ uvicorn main:app --reload
 
 from fastapi import FastAPI
 
+from src.logger import app_logger
 from src.routes import router
 
 
 app = FastAPI()
 
 app.include_router(router)
+
+app_logger.info('Приложение DocAssist‑Agent запущено.')
