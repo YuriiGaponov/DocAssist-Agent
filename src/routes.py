@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 @router.get("/")
-def index_page(request: Request) -> dict:
+def root_endpoint(request: Request) -> dict:
     """
     Обработчик GET‑запроса к корневому пути /.
 
