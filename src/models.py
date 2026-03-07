@@ -12,12 +12,12 @@ src/models.py
 from pydantic import BaseModel
 
 
-class TextRequest(BaseModel):
-    """
-    Модель данных для входного текстового запроса.
+# class TextResponse(BaseModel):
+    # """
+    # Модель данных для входного текстового запроса.
 
 
-    Поля:
-        text (str): текстовое содержимое запроса. Обязательное поле.
-    """
-    text: str
+    # Поля:
+    #     text (str): текстовое содержимое запроса. Обязательное поле.
+    # """
+    # text: str

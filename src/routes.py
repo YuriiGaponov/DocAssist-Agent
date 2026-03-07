@@ -7,9 +7,10 @@
 Использует APIRouter из FastAPI для модульной организации маршрутов.
 """
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, UploadFile
 
-from src.models import TextRequest
+from src.api_validators import upload_txt_validator
+from src.rag import chunked
 
 
 router = APIRouter()
@@ -39,6 +40,8 @@ def root_endpoint(request: Request) -> dict:
     return {"message": "Приложение запущено"}
 
 
-@router.post("/upload-text")
-async def upload_text(request: TextRequest) -> dict:
-    return {'text': request.text}
+@router.post("/upload-txt")
+async def upload_txt(file: UploadFile) -> list:
+
+    upload_txt_validator(file)
+    return await chunked(file)
