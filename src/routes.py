@@ -10,7 +10,7 @@
 from fastapi import APIRouter, Request, UploadFile
 
 from src.api_validators import upload_txt_validator
-from src.rag import chunked
+from src.rag import TxtProcessor
 
 
 router = APIRouter()
@@ -44,4 +44,5 @@ def root_endpoint(request: Request) -> dict:
 async def upload_txt(file: UploadFile) -> list:
 
     upload_txt_validator(file)
-    return await chunked(file)
+    chunks = await TxtProcessor(file).chunked()
+    return chunks
