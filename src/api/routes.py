@@ -1,5 +1,5 @@
 """
-Модуль src/routes.py
+Модуль src/api/routes.py
 
 Определяет HTTP‑эндпоинты API для DocAssist‑Agent.
 Содержит базовый маршрут для проверки запуска приложения.
@@ -9,8 +9,8 @@
 
 from fastapi import APIRouter, Request, UploadFile
 
-from src.api_validators import upload_txt_validator
-from src.rag import TxtProcessor
+from src.api.api_validators import upload_txt_validator
+from src.rag.services import TxtProcessor
 
 
 router = APIRouter()

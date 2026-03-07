@@ -1,5 +1,5 @@
 """
-src/api_validators.py
+src/api/api_validators.py
 
 Модуль содержит функции валидации входящих данных для API‑эндпоинтов.
 

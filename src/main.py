@@ -42,7 +42,7 @@ uvicorn main:app --reload
 from fastapi import FastAPI
 
 from src.logger import app_logger
-from src.routes import router
+from src.api.routes import router
 
 
 app = FastAPI()

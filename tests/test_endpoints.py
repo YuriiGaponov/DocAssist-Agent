@@ -27,7 +27,7 @@ class TestEndpoints:
     для конкретного эндпоинта.
     """
 
-    def test_get_root_endpoint(self, client: TestClient) -> None:
+    def test_get_root_endpoint_available(self, client: TestClient) -> None:
         """
         Тест для GET‑запроса к корневому эндпоинту /.
 
