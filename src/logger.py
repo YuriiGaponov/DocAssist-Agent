@@ -17,9 +17,11 @@ from src.settings import settings
 logging.basicConfig(
     filename=f'{settings.LOG_PATH}/{settings.LOG_FILENAME}',
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
+    level=logging.DEBUG if settings.DEBUG else logging.INFO,
     encoding='utf-8'
 )
 
 # Создание именованного логгера для приложения
 app_logger = logging.getLogger('app_logger')
+# Создание именованного логгера для БД
+db_logger = logging.getLogger('db_logger')

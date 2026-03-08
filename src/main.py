@@ -40,13 +40,23 @@ uvicorn main:app --reload
 
 
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 
 from src.logger import app_logger
 from src.api.routes import router
+from src.db import get_vector_db
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    vector_db = get_vector_db()
+    vector_db.client()
 
+    yield
+
+    app_logger.info('Приложение DocAssist‑Agent остановлено.')
+
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(router)
-
 app_logger.info('Приложение DocAssist‑Agent запущено.')

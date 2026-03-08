@@ -1,8 +1,10 @@
 Python 3.13
-запуск uvicorn src.main:app --reload
+запуск приложения:
+uvicorn src.main:app --reload
+
 
 ВАЖНО
 в целях ускоренной разработки и упрощения тестирования:
 эндпоинт /upload-txt принимает только .txt файлы
-векторная БД in memory
+векторная БД in memory Chroma
 генерация эмбеддингов и работа агента на локальных LLM
