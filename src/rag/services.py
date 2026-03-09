@@ -1,5 +1,6 @@
+import hashlib
 import re
-from typing import List
+from typing import Dict, List
 from fastapi import UploadFile
 
 
@@ -57,3 +58,21 @@ class TxtProcessor:
         """
 
         return self._split_by_blocks(await self._get_content(self.file))
+
+
+def generate_content_id(content: str, length: int = 12) -> Dict[str, str]:
+    """
+    Создаёт ID на основе хеша содержимого.
+
+    Args:
+        content (str): Текст или данные для хеширования.
+        length (int): Длина результирующего ID.
+
+    Returns:
+        Dict[str, str]: Словарь, где:
+            - ключ — сгенерированный ID (обрезанный хеш SHA‑256),
+            - значение — исходный контент (параметр `content`).
+    """
+    hash_obj = hashlib.sha256(content.encode('utf-8'))
+    hex_dig = hash_obj.hexdigest()
+    return {hex_dig[:length]: content}

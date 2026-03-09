@@ -45,6 +45,9 @@ class VectorDBInterface(Protocol):
         """Создание или получение коллекции в векторной БД."""
         raise NotImplementedError
 
+    def add_records(self):
+        raise NotImplementedError
+
 
 class ChromaAdapter(VectorDBInterface):
     """
@@ -90,6 +93,9 @@ class ChromaAdapter(VectorDBInterface):
         )
         db_logger.info("Коллекция создана")
         return collection
+
+    def add_records(self):
+        return super().add_records()
 
 
 def get_vector_db() -> VectorDBInterface:

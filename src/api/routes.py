@@ -10,7 +10,7 @@
 from fastapi import APIRouter, Request, UploadFile
 
 from src.api.api_validators import upload_txt_validator
-from src.rag.services import TxtProcessor
+from src.rag.services import TxtProcessor, generate_content_id
 
 
 router = APIRouter()
@@ -45,4 +45,4 @@ async def upload_txt(file: UploadFile) -> list:
 
     upload_txt_validator(file)
     chunks = await TxtProcessor(file).chunked()
-    return chunks
+    return [generate_content_id(chunk) for chunk in chunks]

@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     VECTOR_DB_PORT: int = 8000
     VECTOR_DB_DIR: str = 'data'
     COLLECTION_NAME: str = 'docs'
+    ID_LENGTH: int = 12
 
     # === Настройки RAG ===
     EMBEDDING_MODEL: str = 'all-MiniLM-L6-v2'
