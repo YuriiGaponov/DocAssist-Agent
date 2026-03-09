@@ -18,7 +18,6 @@ src/settings.py
 - DEBUG: флаг режима отладки (по умолчанию False);
 - LOG_FILENAME: имя файла логов (по умолчанию 'log');
 - LOG_DIR: директория для логов (по умолчанию 'logs');
-- LOG_PATH: вычисляемый путь к директории логов;
 - VECTOR_DB: название векторной БД (по умолчанию 'chroma');
 - VECTOR_DB_HOST: хост векторной БД (по умолчанию 'localhost');
 - VECTOR_DB_PORT: порт векторной БД (по умолчанию 8000).
@@ -51,11 +50,11 @@ class Settings(BaseSettings):
     VECTOR_DB: str = 'chroma'
     VECTOR_DB_HOST: str = 'locallhost'
     VECTOR_DB_PORT: int = 8000
+    VECTOR_DB_DIR: str = 'data'
+    COLLECTION_NAME: str = 'docs'
 
-    @property
-    def LOG_PATH(self) -> Path:
-        """Полный путь к директории логов (на основе BASE_DIR и LOG_DIR)."""
-        return BASE_DIR / self.LOG_DIR
+    # === Настройки RAG ===
+    EMBEDDING_MODEL: str = 'all-MiniLM-L6-v2'
 
     # === Настройки загрузки из окружения ===
     model_config = SettingsConfigDict(

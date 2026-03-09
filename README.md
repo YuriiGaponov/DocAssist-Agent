@@ -1,4 +1,6 @@
 Python 3.13
+fastapi 0.135
+chromadb 1.5
 запуск приложения:
 uvicorn src.main:app --reload
 
@@ -8,3 +10,4 @@ uvicorn src.main:app --reload
 эндпоинт /upload-txt принимает только .txt файлы
 векторная БД in memory Chroma
 генерация эмбеддингов и работа агента на локальных LLM
+Embedding-модель должна быть запущена и доступна на удаленном сервере или локально

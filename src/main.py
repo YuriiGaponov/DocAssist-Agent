@@ -49,8 +49,7 @@ from src.db import get_vector_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    vector_db = get_vector_db()
-    vector_db.client()
+    get_vector_db().get_or_create_collection()
 
     yield
 
