@@ -3,6 +3,7 @@ src/db.py
 
 Модуль реализует абстракцию для работы с векторными базами данных.
 
+
 Функциональность:
 - определяет интерфейс VectorDBInterface для взаимодействия с векторной БД;
 - предоставляет адаптер ChromaAdapter для работы с ChromaDB;
@@ -28,30 +29,50 @@ from src.logger import db_logger
 
 
 class VectorDBInterface(Protocol):
-    """
-    Протокол, определяющий базовый интерфейс для работы с векторной БД.
+    """Базовый интерфейс для работы с векторной БД.
+
+    Свойства:
+        client: клиентское соединение с БД.
 
     Методы:
-        client: свойство, возвращающее клиентское соединение с БД.
-        create_collection: метод для создания/получения коллекции.
+        get_or_create_collection: создание или получение коллекции.
+        add_records: добавление записей в коллекцию.
     """
 
     @property
-    def client(self):
-        """Клиентское соединение с векторной БД."""
+    def client(self) -> ClientAPI:
+        """Возвращает клиентское соединение с векторной БД."""
         raise NotImplementedError
 
-    def get_or_create_collection(self):
-        """Создание или получение коллекции в векторной БД."""
+    def get_or_create_collection(self) -> chromadb.Collection:
+        """Создаёт или получает коллекцию в векторной БД.
+
+        Returns:
+            chromadb.Collection: экземпляр коллекции.
+        """
         raise NotImplementedError
 
-    def add_records(self, ids: Any, documents: Any, metadatas: Any):
+    def add_records(
+        self,
+        ids: List[str],
+        documents: List[str] | None,
+        metadatas: List[Mapping[str, Any]]
+    ) -> dict[str, Any]:
+        """Добавляет записи в коллекцию.
+
+        Args:
+            ids (List[str]): список идентификаторов записей.
+            documents (List[str] | None): список текстов документов.
+            metadatas (List[Mapping[str, Any]]): список метаданных.
+
+        Returns:
+            dict[str, Any]: сообщение с количеством добавленных записей.
+        """
         raise NotImplementedError
 
 
 class ChromaAdapter(VectorDBInterface):
-    """
-    Адаптер для работы с ChromaDB.
+    """Адаптер для работы с ChromaDB.
 
     Args:
         host (str): хост сервера ChromaDB.
@@ -65,19 +86,27 @@ class ChromaAdapter(VectorDBInterface):
             path=settings.VECTOR_DB_DIR
         )
         db_logger.debug("Создан клиент 'chromadb.Client'")
+        self._collection: chromadb.Collection | None = None
+        self._embedding_function: EmbeddingFunction | None = None
 
     @property
     def client(self) -> ClientAPI:
-        """
-        Возвращает клиентское соединение с ChromaDB.
+        """Возвращает клиентское соединение с ChromaDB.
 
         Логирует действие на уровне DEBUG.
         """
         return self._client
 
+    @property
+    def embedding_function(self) -> EmbeddingFunction:
+        if self._embedding_function is None:
+            self._embedding_function = SentenceTransformerEmbeddingFunction(
+                model_name=settings.EMBEDDING_MODEL
+            )
+        return self._embedding_function
+
     def get_or_create_collection(self) -> chromadb.Collection:
-        """
-        Создаёт или получает коллекцию в ChromaDB.
+        """Создаёт или получает коллекцию в ChromaDB.
 
         Использует модель эмбеддингов из настроек приложения.
         Логирует результат на уровне INFO.
@@ -85,22 +114,30 @@ class ChromaAdapter(VectorDBInterface):
         Returns:
             chromadb.Collection: экземпляр коллекции ChromaDB.
         """
-        emb_func: EmbeddingFunction = SentenceTransformerEmbeddingFunction(
-            model_name=settings.EMBEDDING_MODEL
-        )
-        collection = self.client.get_or_create_collection(
-            name=settings.COLLECTION_NAME,
-            embedding_function=emb_func
-        )
-        db_logger.info("Коллекция создана")
-        return collection
+        if self._collection is None:
+            self._collection = self.client.get_or_create_collection(
+                name=settings.COLLECTION_NAME,
+                embedding_function=self.embedding_function
+            )
+            db_logger.info("Коллекция создана")
+        return self._collection
 
     def add_records(
-            self,
-            ids: List[str],
-            documents: List[str] | None,
-            metadatas: List[Mapping[str, Any]]
-    ):
+        self,
+        ids: List[str],
+        documents: List[str] | None,
+        metadatas: List[Mapping[str, Any]]
+    ) -> dict[str, Any]:
+        """Добавляет записи в коллекцию ChromaDB.
+
+        Args:
+            ids (List[str]): список идентификаторов записей.
+            documents (List[str] | None): список текстов документов.
+            metadatas (List[Mapping[str, Any]]): список метаданных.
+
+        Returns:
+            dict[str, Any]: сообщение об успешном добавлении записей.
+        """
         collection = self.get_or_create_collection()
         collection.add(
             ids=ids,
@@ -111,11 +148,10 @@ class ChromaAdapter(VectorDBInterface):
 
 
 def get_vector_db() -> VectorDBInterface:
-    """
-    Фабрика для получения экземпляра векторной БД по настройкам приложения.
+    """Возвращает экземпляр векторной БД по настройкам приложения.
 
-    На основе значения settings.VECTOR_DB возвращает соответствующий адаптер.
-    В текущей реализации поддерживает только ChromaDB.
+    На основе значения settings.VECTOR_DB возвращает соответствующий
+    адаптер. В текущей реализации поддерживает только ChromaDB.
 
     Returns:
         VectorDBInterface: экземпляр адаптера для работы с векторной БД.
