@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     # === Настройки RAG ===
     EMBEDDING_MODEL: str = 'all-MiniLM-L6-v2'
 
+    # === Настройки API ===
+    UPLOAD_FILE_MAX_SIZE: int = 10 * 1024 * 1024
+
     # === Настройки загрузки из окружения ===
     model_config = SettingsConfigDict(
         env_file=(BASE_DIR / '.env'),
