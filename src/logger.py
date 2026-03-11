@@ -9,6 +9,7 @@ src/logger.py
 """
 
 import logging
+from logging import Logger
 from logging.handlers import RotatingFileHandler
 
 from src.settings import settings
@@ -36,8 +37,8 @@ logging.basicConfig(
 )
 
 # Именованные логгеры для разных компонентов
-app_logger = logging.getLogger('app_logger')
+app_logger: Logger = logging.getLogger('app_logger')
 """Логгер для общего логирования приложения."""
 
-db_logger = logging.getLogger('db_logger')
+db_logger: Logger = logging.getLogger('db_logger')
 """Логгер для логирования операций с базой данных."""
