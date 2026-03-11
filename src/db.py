@@ -14,7 +14,7 @@ src/db.py
 - get_vector_db: функция‑фабрика для инициализации БД.
 """
 
-from typing import Protocol
+from typing import Any, Mapping, Protocol, List
 
 import chromadb
 from chromadb.api import ClientAPI
@@ -45,7 +45,7 @@ class VectorDBInterface(Protocol):
         """Создание или получение коллекции в векторной БД."""
         raise NotImplementedError
 
-    def add_records(self):
+    def add_records(self, ids: Any, documents: Any, metadatas: Any):
         raise NotImplementedError
 
 
@@ -61,6 +61,10 @@ class ChromaAdapter(VectorDBInterface):
     def __init__(self, host: str, port: int):
         self.host = host
         self.port = port
+        self._client = chromadb.PersistentClient(
+            path=settings.VECTOR_DB_DIR
+        )
+        db_logger.debug("Создан клиент 'chromadb.Client'")
 
     @property
     def client(self) -> ClientAPI:
@@ -69,10 +73,7 @@ class ChromaAdapter(VectorDBInterface):
 
         Логирует действие на уровне DEBUG.
         """
-        db_logger.debug("Создан клиент 'chromadb.Client'")
-        return chromadb.PersistentClient(
-            path=settings.VECTOR_DB_DIR
-        )
+        return self._client
 
     def get_or_create_collection(self) -> chromadb.Collection:
         """
@@ -94,8 +95,19 @@ class ChromaAdapter(VectorDBInterface):
         db_logger.info("Коллекция создана")
         return collection
 
-    def add_records(self):
-        return super().add_records()
+    def add_records(
+            self,
+            ids: List[str],
+            documents: List[str] | None,
+            metadatas: List[Mapping[str, Any]]
+    ):
+        collection = self.get_or_create_collection()
+        collection.add(
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas
+        )
+        return {'message': f'Добавлено {len(ids)} записей.'}
 
 
 def get_vector_db() -> VectorDBInterface:
@@ -121,3 +133,6 @@ def get_vector_db() -> VectorDBInterface:
     else:
         db_logger.error(f"Неизвестная БД: {db}")
         raise ValueError(f"Неизвестная БД: {db}")
+
+
+vector_db = get_vector_db()

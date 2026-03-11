@@ -44,12 +44,12 @@ from contextlib import asynccontextmanager
 
 from src.logger import app_logger
 from src.api.routes import router
-from src.db import get_vector_db
+from src.db import vector_db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    get_vector_db().get_or_create_collection()
+    vector_db.get_or_create_collection()
 
     yield
 
