@@ -3,19 +3,21 @@ src/db.py
 
 Модуль реализует абстракцию для работы с векторными базами данных.
 
-
 Функциональность:
-- определяет интерфейс VectorDBInterface для взаимодействия с векторной БД;
+- определяет интерфейс VectorDBInterface для взаимодействия
+  с векторной БД;
 - предоставляет адаптер ChromaAdapter для работы с ChromaDB;
-- содержит фабрику get_vector_db для получения экземпляра БД по настройкам.
+- содержит фабрику get_vector_db для получения экземпляра БД
+  по настройкам.
 
 Используемые компоненты:
-- VectorDBInterface: протокол, задающий контракт для работы с векторной БД;
+- VectorDBInterface: протокол, задающий контракт для работы
+  с векторной БД;
 - ChromaAdapter: реализация интерфейса для ChromaDB;
 - get_vector_db: функция‑фабрика для инициализации БД.
 """
 
-from typing import Any, Mapping, Protocol, List
+from typing import Any, Dict, Protocol, List
 
 import chromadb
 from chromadb.api import ClientAPI
@@ -25,6 +27,7 @@ from chromadb.utils.embedding_functions import (
 )
 
 from src.settings import settings
+from src.types import Metadata
 from src.logger import db_logger
 
 
@@ -56,17 +59,20 @@ class VectorDBInterface(Protocol):
         self,
         ids: List[str],
         documents: List[str] | None,
-        metadatas: List[Mapping[str, Any]]
-    ) -> dict[str, Any]:
+        metadatas: List[Metadata] | None
+    ) -> Dict[str, Any]:
         """Добавляет записи в коллекцию.
 
         Args:
             ids (List[str]): список идентификаторов записей.
             documents (List[str] | None): список текстов документов.
-            metadatas (List[Mapping[str, Any]]): список метаданных.
+            metadatas (List[Metadata] | None): список метаданных.
 
         Returns:
-            dict[str, Any]: сообщение с количеством добавленных записей.
+            Dict[str, Any]: словарь с результатами операции:
+                - 'message': описание результата;
+                - 'success': флаг успеха (True/False);
+                - 'error': текст ошибки (если есть).
         """
         raise NotImplementedError
 
@@ -126,25 +132,41 @@ class ChromaAdapter(VectorDBInterface):
         self,
         ids: List[str],
         documents: List[str] | None,
-        metadatas: List[Mapping[str, Any]]
-    ) -> dict[str, Any]:
+        metadatas: List[Metadata] | None
+    ) -> Dict[str, Any]:
         """Добавляет записи в коллекцию ChromaDB.
 
         Args:
             ids (List[str]): список идентификаторов записей.
             documents (List[str] | None): список текстов документов.
-            metadatas (List[Mapping[str, Any]]): список метаданных.
+            metadatas (List[Metadata] | None): список метаданных.
 
         Returns:
-            dict[str, Any]: сообщение об успешном добавлении записей.
+            Dict[str, Any]: словарь с результатами операции:
+                - 'message': описание результата;
+                - 'success': флаг успеха (True/False);
+                - 'error': текст ошибки (если есть).
         """
-        collection = self.get_or_create_collection()
-        collection.add(
-            ids=ids,
-            documents=documents,
-            metadatas=metadatas
-        )
-        return {'message': f'Добавлено {len(ids)} записей.'}
+        try:
+            collection = self.get_or_create_collection()
+            collection.add(
+                ids=ids,
+                documents=documents,
+                metadatas=metadatas
+            )
+            db_logger.info(f'Добавлено {len(ids)} записей.')
+            return {
+                'message': f'Добавлено {len(ids)} записей.',
+                'success': True
+            }
+
+        except Exception as e:
+            db_logger.error(f"Ошибка при добавлении записей в ChromaDB: {e}")
+            return {
+                'message': 'Не удалось добавить записи.',
+                'success': False,
+                'error': str(e)
+            }
 
 
 def get_vector_db() -> VectorDBInterface:

@@ -1,16 +1,15 @@
 import re
-from typing import Dict, List, Protocol
+from typing import List, Protocol
 
 from fastapi import UploadFile
 
 from src.db import get_vector_db
-from src.settings import settings
 from src.rag.services import generate_content_id, get_file_metadata
 from src.api.api_validators import upload_txt_validator
 
 
 class UploadProcessingService(Protocol):
-    async def upload_db(self) -> Dict[str, str | None]:
+    async def upload_db(self) -> None:
         pass
 
 
@@ -69,17 +68,15 @@ class TxtUploadProcessingService(UploadProcessingService):
 
         return self._split_by_blocks(await self._get_content(self.file))
 
-    async def upload_db(self) -> Dict[str, str | None]:
+    async def upload_db(self) -> None:
         upload_txt_validator(self.file)
         file_metadata = get_file_metadata(self.file)
         documents = await self.chunked()
         ids = [
-            generate_content_id(chunk, settings.ID_LENGTH)
+            generate_content_id(chunk)
             for chunk in documents
         ]
-        metadatas = [file_metadata] * len(ids)
+        metadatas = [file_metadata for _ in range(len(ids))]
 
         vector_db = get_vector_db()
         vector_db.add_records(ids, documents, metadatas)
-
-        return {'message': f'Добавлено {len(ids)} записей.'}
