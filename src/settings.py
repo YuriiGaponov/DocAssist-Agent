@@ -1,8 +1,8 @@
 """
 src/settings.py
 
-Модуль содержит конфигурацию приложения через класс Settings на базе
-Pydantic Settings.
+Модуль содержит конфигурацию приложения через класс Settings
+на базе Pydantic Settings.
 
 Основная задача — централизованное управление настройками приложения:
 - загрузка из .env‑файла;
@@ -44,8 +44,12 @@ class Settings(BaseSettings):
     - VECTOR_DB_PORT: порт БД (8000).
     - VECTOR_DB_DIR: директория хранения данных ('data').
     - COLLECTION_NAME: имя коллекции ('docs').
-    - EMBEDDING_MODEL: модель для эмбеддингов ('all-MiniLM-L6-v2').
-    - UPLOAD_FILE_MAX_SIZE: макс. размер загружаемого файла (10 МБ).
+    - EMBEDDING_MODEL: модель для эмбеддингов
+      ('all-MiniLM-L6-v2').
+    - UPLOAD_FILE_MAX_SIZE: макс. размер загружаемого файла
+      (10 МБ).
+    - CHUNK_MIN_LENGTH: минимальная длина фрагмента текста
+      (10 символов).
 
     Конфигурация загрузки:
     - env_file: .env из BASE_DIR.
@@ -53,20 +57,26 @@ class Settings(BaseSettings):
     - extra: 'ignore' (пропускать неизвестные переменные).
     """
 
+    # Режим отладки
     DEBUG: bool = False
 
+    # Настройки логирования
     LOG_FILENAME: str = 'log'
     LOG_DIR: str = 'logs'
 
+    # Настройки векторной БД
     VECTOR_DB: str = 'chroma'
     VECTOR_DB_HOST: str = 'localhost'
     VECTOR_DB_PORT: int = 8000
     VECTOR_DB_DIR: str = 'data'
     COLLECTION_NAME: str = 'docs'
 
+    # Настройки RAG
     EMBEDDING_MODEL: str = 'all-MiniLM-L6-v2'
 
+    # Настройки API
     UPLOAD_FILE_MAX_SIZE: int = 10 * 1024 * 1024
+    CHUNK_MIN_LENGTH: int = 10
 
     model_config = SettingsConfigDict(
         env_file=(BASE_DIR / '.env'),

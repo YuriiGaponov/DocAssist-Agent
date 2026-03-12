@@ -1,82 +1,148 @@
+"""
+src/api/services.py
+
+Модуль содержит сервисы для обработки загруженных файлов и взаимодействия
+с векторной БД в рамках API.
+
+Основная функциональность:
+- валидация и чтение загруженных TXT‑файлов;
+- разбивка текста на семантические блоки (чанки);
+- загрузка данных в векторную БД.
+
+Ключевые компоненты:
+- UploadProcessingService: протокол для сервисов обработки загрузки;
+- TxtUploadProcessingService: реализация для TXT‑файлов.
+"""
+
 import re
 from typing import List, Protocol
 
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 
-from src.db import get_vector_db
-from src.rag.services import generate_content_id, get_file_metadata
 from src.api.api_validators import upload_txt_validator
+from src.db import VectorDBInterface, get_vector_db
+from src.logger import app_logger
+from src.rag.services import generate_content_id, get_file_metadata
+from src.settings import settings
 
 
 class UploadProcessingService(Protocol):
+    """Протокол для сервисов обработки загруженных файлов.
+
+    Определяет контракт метода upload_db для загрузки данных в БД.
+    """
     async def upload_db(self) -> None:
         pass
 
 
 class TxtUploadProcessingService(UploadProcessingService):
-    """
-    Класс для обработки текстового содержимого из загруженного файла.
-    Предоставляет методы для чтения, разбивки на блоки и чанкирования текста.
+    """Сервис для обработки текстового содержимого из загруженного TXT‑файла.
+
+    Предоставляет методы для:
+    - чтения файла;
+    - разбивки текста на семантические блоки;
+    - загрузки данных в векторную БД.
+
+    Args:
+        file (UploadFile): загруженный файл из FastAPI.
+        vector_db (VectorDBInterface | None): экземпляр векторной БД
+            (если не передан, будет получен через get_vector_db()).
     """
 
-    def __init__(self, file: UploadFile):
+    def __init__(
+        self,
+        file: UploadFile,
+        vector_db: VectorDBInterface | None = None
+    ):
         self.file = file
+        self.vector_db = vector_db or get_vector_db()
 
     @staticmethod
     async def _get_content(file: UploadFile) -> str:
-        """
-        Асинхронное чтение байтов из файла и декодирование в строку (UTF‑8).
+        """Читает содержимое файла и декодирует его как UTF‑8.
 
         Args:
-            file (UploadFile): Загруженный файл.
+            file (UploadFile): загруженный файл.
 
         Returns:
-            str: Декодированное текстовое содержимое файла.
+            str: декодированное содержимое файла.
+
+        Raises:
+            ValueError: если файл не является текстовым (ошибка декодирования).
         """
-        contents = await file.read()
-        text = contents.decode("utf-8")
-        return text
+        try:
+            contents = await file.read()
+            return contents.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise ValueError(f"Файл не является текстовым (UTF-8): {e}")
 
     @staticmethod
     def _split_by_blocks(text: str) -> List[str]:
-        """
-        Разбивает текст на семантические блоки (абзацы, заголовки, списки).
+        """Разбивает текст на семантические блоки (абзацы, заголовки, списки).
+
+        Использует перевод строки как разделитель, удаляет пустые блоки
+        и фильтрует по минимальной длине (CHUNK_MIN_LENGTH).
 
         Args:
-            text (str): Исходный текст.
+            text (str): исходный текст.
 
         Returns:
-            List[str]: Список непустых блоков текста после разбивки.
+            List[str]: список непустых блоков текста после разбивки.
         """
-
         return [
             block.strip()
             for block in re.split(r'\n', text.replace('\r', ''))
-            if block.strip()
+            if len(block.strip()) >= settings.CHUNK_MIN_LENGTH
         ]
 
     async def chunked(self) -> List[str]:
-        """
-        Читает содержимое файла и разбивает его на чанки (семантические блоки).
-
-        Args:
-            file (UploadFile): Загруженный файл.
+        """Читает содержимое файла и разбивает его на семантические блоки.
 
         Returns:
-            List[str]: Список чанков (блоков текста).
+            List[str]: список чанков (блоков текста).
         """
-
         return self._split_by_blocks(await self._get_content(self.file))
 
     async def upload_db(self) -> None:
-        upload_txt_validator(self.file)
-        file_metadata = get_file_metadata(self.file)
-        documents = await self.chunked()
-        ids = [
-            generate_content_id(chunk)
-            for chunk in documents
-        ]
-        metadatas = [file_metadata for _ in range(len(ids))]
+        """Загружает данные из файла в векторную БД.
 
-        vector_db = get_vector_db()
-        vector_db.add_records(ids, documents, metadatas)
+        Выполняет:
+        - валидацию файла;
+        - чтение и разбивку на чанки;
+        - генерацию ID для чанков;
+        - сбор метаданных;
+        - добавление записей в БД.
+
+        Логирует этапы выполнения и обрабатывает ошибки.
+
+        Raises:
+            HTTPException: с кодом 400 при валидационных ошибках
+                или отсутствии чанков.
+            HTTPException: с кодом 500 при ошибках загрузки в БД.
+        """
+        app_logger.info(f"Начало обработки файла: {self.file.filename}")
+        try:
+            upload_txt_validator(self.file)
+            documents = await self.chunked()
+
+            if not documents:
+                raise ValueError("Не найдено валидных текстовых блоков")
+
+            ids = [
+                generate_content_id(chunk)
+                for chunk in documents
+            ]
+            metadatas = get_file_metadata(self.file)
+
+            self.vector_db.add_records(ids, documents, metadatas)
+            app_logger.info(
+                f"Добавление данных из файла: {self.file.filename} завершено"
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            app_logger.error(f"Ошибка загрузки в БД: {e}")
+            raise HTTPException(
+                status_code=500,
+                detail="Ошибка сохранения в векторную БД"
+            )

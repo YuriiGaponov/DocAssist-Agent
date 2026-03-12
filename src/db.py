@@ -59,7 +59,7 @@ class VectorDBInterface(Protocol):
         self,
         ids: List[str],
         documents: List[str] | None,
-        metadatas: List[Metadata] | None
+        metadatas: Metadata | List[Metadata] | None
     ) -> Dict[str, Any]:
         """Добавляет записи в коллекцию.
 
@@ -132,7 +132,7 @@ class ChromaAdapter(VectorDBInterface):
         self,
         ids: List[str],
         documents: List[str] | None,
-        metadatas: List[Metadata] | None
+        metadatas: Metadata | List[Metadata] | None
     ) -> Dict[str, Any]:
         """Добавляет записи в коллекцию ChromaDB.
 
