@@ -14,6 +14,7 @@ src/api/services.py
 - TxtUploadProcessingService: реализация для TXT‑файлов.
 """
 
+from http import HTTPStatus
 import re
 from typing import Any, Dict, List, Protocol
 
@@ -154,6 +155,6 @@ class TxtUploadProcessingService(UploadProcessingService):
         except Exception as e:
             app_logger.error(f"Ошибка загрузки в БД: {e}")
             raise HTTPException(
-                status_code=500,
+                status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
                 detail="Ошибка сохранения в векторную БД"
             )
