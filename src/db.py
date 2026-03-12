@@ -66,7 +66,8 @@ class VectorDBInterface(Protocol):
         Args:
             ids (List[str]): список идентификаторов записей.
             documents (List[str] | None): список текстов документов.
-            metadatas (List[Metadata] | None): список метаданных.
+            metadatas (Metadata | List[Metadata] | None):
+                список метаданных или одиночный объект метаданных.
 
         Returns:
             Dict[str, Any]: словарь с результатами операции:
@@ -139,13 +140,17 @@ class ChromaAdapter(VectorDBInterface):
         Args:
             ids (List[str]): список идентификаторов записей.
             documents (List[str] | None): список текстов документов.
-            metadatas (List[Metadata] | None): список метаданных.
+            metadatas (Metadata | List[Metadata] | None):
+                список метаданных или одиночный объект метаданных.
 
         Returns:
             Dict[str, Any]: словарь с результатами операции:
                 - 'message': описание результата;
                 - 'success': флаг успеха (True/False);
                 - 'error': текст ошибки (если есть).
+
+        Raises:
+            Exception: при ошибке добавления записей в БД (логируется).
         """
         try:
             collection = self.get_or_create_collection()
@@ -159,11 +164,10 @@ class ChromaAdapter(VectorDBInterface):
                 'message': f'Добавлено {len(ids)} записей.',
                 'success': True
             }
-
         except Exception as e:
             db_logger.error(f"Ошибка при добавлении записей в ChromaDB: {e}")
             return {
-                'message': 'Не удалось добавить записи.',
+                'message': 'Ошибка при добавлении записей',
                 'success': False,
                 'error': str(e)
             }
@@ -193,4 +197,5 @@ def get_vector_db() -> VectorDBInterface:
         raise ValueError(f"Неизвестная БД: {db}")
 
 
+# Экземпляр векторной БД, доступный для импорта в других модулях
 vector_db = get_vector_db()

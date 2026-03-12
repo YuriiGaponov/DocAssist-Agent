@@ -15,7 +15,7 @@ src/api/services.py
 """
 
 import re
-from typing import List, Protocol
+from typing import Any, Dict, List, Protocol
 
 from fastapi import HTTPException, UploadFile
 
@@ -31,8 +31,8 @@ class UploadProcessingService(Protocol):
 
     Определяет контракт метода upload_db для загрузки данных в БД.
     """
-    async def upload_db(self) -> None:
-        pass
+    async def upload_db(self) -> Dict[str, Any]:
+        ...
 
 
 class TxtUploadProcessingService(UploadProcessingService):
@@ -103,7 +103,7 @@ class TxtUploadProcessingService(UploadProcessingService):
         """
         return self._split_by_blocks(await self._get_content(self.file))
 
-    async def upload_db(self) -> None:
+    async def upload_db(self) -> Dict[str, Any]:
         """Загружает данные из файла в векторную БД.
 
         Выполняет:
@@ -114,6 +114,13 @@ class TxtUploadProcessingService(UploadProcessingService):
         - добавление записей в БД.
 
         Логирует этапы выполнения и обрабатывает ошибки.
+
+        Returns:
+            Dict[str, Any]: словарь с результатом операции:
+                {
+                    'message': f'Добавлено {len(ids)} записей.',
+                    'success': True
+                }
 
         Raises:
             HTTPException: с кодом 400 при валидационных ошибках
@@ -132,12 +139,16 @@ class TxtUploadProcessingService(UploadProcessingService):
                 generate_content_id(chunk)
                 for chunk in documents
             ]
-            metadatas = get_file_metadata(self.file)
+            metadatas = [get_file_metadata(self.file) for _ in documents]
 
             self.vector_db.add_records(ids, documents, metadatas)
             app_logger.info(
                 f"Добавление данных из файла: {self.file.filename} завершено"
             )
+            return {
+                'message': f'Добавлено {len(ids)} записей.',
+                'success': True
+            }
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
