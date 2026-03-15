@@ -74,21 +74,21 @@ class TestUploadTXTEndpoint:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "file, expected_status",
+        "txt_file, expected_status",
         [
             ("sample_txt", HTTPStatus.OK),
             ("empty_txt", HTTPStatus.BAD_REQUEST)
         ],
-        indirect=["file"]
+        indirect=["txt_file"]
     )
     async def test_post_upload_txt_success(
         self,
         client: TestClient,
-        file: Tuple[str, bytes, str],
+        txt_file: Tuple[str, bytes, str],
         expected_status: int
     ) -> None:
 
-        filename, file_content, content_type = file
+        filename, file_content, content_type = txt_file
         response = client.post(
             "/upload-txt",
             files={'file': (filename, file_content, content_type)}
@@ -98,17 +98,17 @@ class TestUploadTXTEndpoint:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "file",
+        "txt_file",
         ["duplicate_txt"],
-        indirect=["file"]
+        indirect=["txt_file"]
     )
     async def test_post_upload_txt_duplicate_add_unique_data(
         self,
         client: TestClient,
-        file: Tuple[str, bytes, str],
+        txt_file: Tuple[str, bytes, str],
         test_vector_db: MockVectorDB
-    ):
-        filename, file_content, content_type = file
+    ) -> None:
+        filename, file_content, content_type = txt_file
         client.post(
             "/upload-txt",
             files={'file': (filename, file_content, content_type)}
@@ -122,7 +122,7 @@ class TestUploadTXTEndpoint:
         added_records_file: Tuple[str, bytes, str],
         new_data_file: Tuple[str, bytes, str],
         test_vector_db: MockVectorDB
-    ):
+    ) -> None:
         filename, file_content, content_type = added_records_file
         client.post(
             "/upload-txt",
@@ -136,3 +136,17 @@ class TestUploadTXTEndpoint:
             files={'file': (filename, file_content, content_type)}
         )
         assert test_vector_db.count_records() == db_records_count + 1
+
+    @pytest.mark.asyncio
+    async def test_post_upload_not_txt(
+        self,
+        client: TestClient,
+        jpg_file: Tuple[str, bytes, str],
+    ) -> None:
+        filename, file_content, content_type = jpg_file
+        response = client.post(
+            "/upload-txt",
+            files={'file': (filename, file_content, content_type)}
+        )
+
+        assert response.status_code == HTTPStatus.BAD_REQUEST
