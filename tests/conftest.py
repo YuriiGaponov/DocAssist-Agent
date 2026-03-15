@@ -24,12 +24,24 @@ from pytest import FixtureRequest
 from fastapi.testclient import TestClient
 
 from src.main import app
-from src.api.services import TxtUploadProcessingService, get_vector_db
-from src.db import VectorDBInterface
+from src.db import VectorDBInterface, get_vector_db
+
+
+class TestVectorDB(VectorDBInterface):
+    def __init__(self):
+        self.storage = []
+
+    def get_or_create_collection(self):
+        return "test_collection"
+
+    def add_records(self, ids, documents, metadatas):
+        for i, doc, meta in zip(ids, documents, metadatas):
+            self.storage.append({"id": i, "doc": doc, "meta": meta})
+        return {"message": f"Добавлено {len(ids)} записей", "success": True}
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(test_vector_db: TestVectorDB):
     """
     Фикстура для создания тестового клиента FastAPI.
 
@@ -49,43 +61,16 @@ def client() -> TestClient:
             assert response.status_code == 200
             assert response.json() == {"message": "Приложение запущено"}
     """
-    return TestClient(app)
-
-
-class TestVectorDB(VectorDBInterface):
-    def __init__(self):
-        self.storage = []
-
-    def get_or_create_collection(self):
-        return "test_collection"
-
-    def add_records(self, ids, documents, metadatas):
-        for i, doc, meta in zip(ids, documents, metadatas):
-            self.storage.append({"id": i, "doc": doc, "meta": meta})
-        return {"message": f"Добавлено {len(ids)} записей", "success": True}
+    app.dependency_overrides[get_vector_db] = lambda: test_vector_db
+    client = TestClient(app)
+    yield client
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture
 def test_vector_db():
     """Возвращает экземпляр тестовой векторной БД."""
     return TestVectorDB()
-
-
-@pytest.fixture(autouse=True)
-def patch_service_db(test_vector_db):
-    """
-    Подменяет векторную БД в сервисе на тестовую.
-    Действует для всех тестов автоматически.
-    """
-    TxtUploadProcessingService.vector_db = test_vector_db
-    yield
-    TxtUploadProcessingService.vector_db = get_vector_db()
-
-# @pytest.fixture(autouse=True)
-# def patch_get_vector_db(test_vector_db):
-#     """Подменяет get_vector_db() на возврат тестовой БД."""
-#     with patch("src.db.get_vector_db", return_value=test_vector_db):
-#         yield
 
 
 @pytest.fixture

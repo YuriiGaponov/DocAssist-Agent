@@ -16,9 +16,9 @@ src/api/routes.py
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, Request, UploadFile
+from fastapi import APIRouter, Depends, Request, UploadFile
 from src.api.services import TxtUploadProcessingService
-
+from src.db import VectorDBInterface, get_vector_db
 
 router = APIRouter()
 """Экземпляр APIRouter для регистрации эндпоинтов.
@@ -49,7 +49,10 @@ def root_endpoint(request: Request) -> dict:
 
 
 @router.post("/upload-txt")
-async def upload_txt(file: UploadFile) -> Dict[str, Any]:
+async def upload_txt(
+    file: UploadFile,
+    vector_db: VectorDBInterface = Depends(get_vector_db)
+) -> Dict[str, Any]:
     """Обработчик POST‑запроса для загрузки TXT‑файла.
 
     Принимает загруженный файл, создаёт сервис обработки
@@ -57,6 +60,8 @@ async def upload_txt(file: UploadFile) -> Dict[str, Any]:
 
     Args:
         file (UploadFile): загруженный файл из запроса.
+        vector_db (VectorDBInterface): экземпляр векторной БД,
+            полученный через зависимость Depends(get_vector_db).
 
     Returns:
         Dict[str, Any]: результат операции загрузки, возвращаемый
@@ -76,6 +81,12 @@ async def upload_txt(file: UploadFile) -> Dict[str, Any]:
             }
         Ошибка:
             HTTPException с кодом 400 или 500.
+
+    Note:
+        Использование Depends(get_vector_db) позволяет:
+        - централизовать конфигурацию подключения к БД;
+        - упростить тестирование (можно подменить зависимость);
+        - следовать принципам Dependency Injection.
     """
-    service = TxtUploadProcessingService(file)
+    service = TxtUploadProcessingService(file, vector_db)
     return await service.upload_db()
