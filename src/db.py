@@ -195,7 +195,3 @@ def get_vector_db() -> VectorDBInterface:
     else:
         db_logger.error(f"Неизвестная БД: {db}")
         raise ValueError(f"Неизвестная БД: {db}")
-
-
-# Экземпляр векторной БД, доступный для импорта в других модулях
-vector_db = get_vector_db()

@@ -22,7 +22,7 @@ from typing import AsyncGenerator
 
 from src.logger import app_logger
 from src.api.routes import router
-from src.db import vector_db
+from src.db import get_vector_db
 
 
 @asynccontextmanager
@@ -47,6 +47,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         Exception: если инициализация БД завершилась ошибкой.
     """
     try:
+        vector_db = get_vector_db()
         vector_db.get_or_create_collection()
         app_logger.info('Коллекция векторов инициализирована.')
         yield

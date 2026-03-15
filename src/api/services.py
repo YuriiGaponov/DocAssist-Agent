@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Protocol
 from fastapi import HTTPException, UploadFile
 
 from src.api.api_validators import upload_txt_validator
-from src.db import VectorDBInterface, get_vector_db
+from src.db import get_vector_db
 from src.logger import app_logger
 from src.rag.services import generate_content_id, get_file_metadata
 from src.settings import settings
@@ -53,10 +53,9 @@ class TxtUploadProcessingService(UploadProcessingService):
     def __init__(
         self,
         file: UploadFile,
-        vector_db: VectorDBInterface | None = None
     ):
         self.file = file
-        self.vector_db = vector_db or get_vector_db()
+        self.vector_db = get_vector_db()
 
     @staticmethod
     async def _get_content(file: UploadFile) -> str:

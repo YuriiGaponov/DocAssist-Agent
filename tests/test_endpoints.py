@@ -13,13 +13,17 @@ tests/test_endpoints.py
 - фикстура `client` должна быть доступна из conftest.py.
 
 Структура:
-- Класс `TestEndpoints` группирует тесты по эндпоинтам приложения.
+- Класс `TestRootEndpoint` группирует тесты по эндпоинтам приложения.
 """
 
+from typing import Tuple
+
+import pytest
 from fastapi.testclient import TestClient
+from http import HTTPStatus
 
 
-class TestEndpoints:
+class TestRootEndpoint:
     """
     Набор тестов для проверки работоспособности HTTP‑эндпоинтов приложения.
 
@@ -54,7 +58,7 @@ class TestEndpoints:
         """
         response = client.get("/")
 
-        assert response.status_code == 200, (
+        assert response.status_code == HTTPStatus.OK, (
             f"Ожидался статус 200, но получен {response.status_code}"
         )
 
@@ -62,3 +66,30 @@ class TestEndpoints:
             f"Ожидаемый ответ {'message': 'Приложение запущено'}, "
             f"но получен {response.json()}"
         )
+
+
+class TestUploadTXTEndpoint:
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "file, expected_status",
+        [
+            ("sample_txt", HTTPStatus.OK),
+            ("empty_txt", HTTPStatus.BAD_REQUEST)
+        ],
+        indirect=["file"]
+    )
+    async def test_post_upload_txt_success(
+        self,
+        client: TestClient,
+        file: Tuple[str, bytes, str],
+        expected_status: int
+    ) -> None:
+
+        filename, file_content, content_type = file
+        response = client.post(
+            "/upload-txt",
+            files={'file': (filename, file_content, content_type)}
+        )
+
+        assert response.status_code == expected_status
