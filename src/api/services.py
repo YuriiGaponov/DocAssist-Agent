@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Protocol
 from fastapi import HTTPException, UploadFile
 
 from src.api.api_validators import upload_txt_validator
-from src.db import get_vector_db
+from src.db import VectorDBInterface
 from src.logger import app_logger
 from src.rag.services import generate_content_id, get_file_metadata
 from src.settings import settings
@@ -46,16 +46,16 @@ class TxtUploadProcessingService(UploadProcessingService):
 
     Args:
         file (UploadFile): загруженный файл из FastAPI.
-        vector_db (VectorDBInterface | None): экземпляр векторной БД
-            (если не передан, будет получен через get_vector_db()).
+        vector_db (VectorDBInterface): экземпляр векторной БД
     """
 
     def __init__(
         self,
         file: UploadFile,
+        vector_db: VectorDBInterface
     ):
         self.file = file
-        self.vector_db = get_vector_db()
+        self.vector_db = vector_db
 
     @staticmethod
     async def _get_content(file: UploadFile) -> str:
@@ -150,7 +150,9 @@ class TxtUploadProcessingService(UploadProcessingService):
                 'success': True
             }
         except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST, detail=str(e)
+            )
         except Exception as e:
             app_logger.error(f"Ошибка загрузки в БД: {e}")
             raise HTTPException(
