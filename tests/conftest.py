@@ -27,7 +27,7 @@ from src.main import app
 from src.db import VectorDBInterface, get_vector_db
 
 
-class TestVectorDB(VectorDBInterface):
+class MockVectorDB(VectorDBInterface):
     def __init__(self):
         self.storage = []
 
@@ -39,9 +39,12 @@ class TestVectorDB(VectorDBInterface):
             self.storage.append({"id": i, "doc": doc, "meta": meta})
         return {"message": f"Добавлено {len(ids)} записей", "success": True}
 
+    def count_records(self) -> int:
+        return len(self.storage)
+
 
 @pytest.fixture
-def client(test_vector_db: TestVectorDB):
+def client(test_vector_db: MockVectorDB):
     """
     Фикстура для создания тестового клиента FastAPI.
 
@@ -70,7 +73,7 @@ def client(test_vector_db: TestVectorDB):
 @pytest.fixture
 def test_vector_db():
     """Возвращает экземпляр тестовой векторной БД."""
-    return TestVectorDB()
+    return MockVectorDB()
 
 
 @pytest.fixture
@@ -89,21 +92,55 @@ def empty_txt_content() -> str:
     return ''
 
 
+@pytest.fixture
+def duplicate_txt_content() -> str:
+    """Тестовый TXT‑файл (3 абзаца, UTF‑8)."""
+    return (
+        "Абзац с одинаковыми данными. Один чанк.\n\n"
+        "Абзац с одинаковыми данными. Один чанк.\n"
+        "Абзац с одинаковыми данными. Один чанк."
+    )
+
+
+@pytest.fixture
+def added_records_file() -> Tuple[str, bytes, str]:
+    return (
+        "added_records.txt",
+        "Записи, ранее добавленные в векторную базу данных.".encode("utf-8"),
+        "text/plain"
+    )
+
+
+@pytest.fixture
+def new_data_file() -> Tuple[str, bytes, str]:
+    return (
+        "new_data.txt",
+        (
+            "Записи, ранее добавленные в векторную базу данных.\n\n"
+            "Новые данные для добавления в векторную базу данных."
+        ).encode("utf-8"),
+        "text/plain"
+    )
+
+
 @pytest.fixture(
-    params=("sample_txt", "empty_txt")
+    params=("sample_txt", "empty_txt", "duplicate_txt", "new_data_txt")
 )
 def file(
     request: FixtureRequest,
     sample_txt_content: str,
-    empty_txt_content: str
+    empty_txt_content: str,
+    duplicate_txt_content: str
 ) -> Tuple[str, bytes, str]:
-    if request.param in ("sample_txt", "empty_txt"):
+    if request.param in ("sample_txt", "empty_txt", "duplicate_txt"):
         file_name = ''
         file_content = ''
         if request.param == "sample_txt":
-            file_name, file_content = "sample_txt", sample_txt_content
+            file_name, file_content = "sample.txt", sample_txt_content
         elif request.param == "empty_txt":
-            file_name, file_content = "empty_txt", empty_txt_content
+            file_name, file_content = "empty.txt", empty_txt_content
+        elif request.param == "duplicate_txt":
+            file_name, file_content = "duplicate.txt", duplicate_txt_content
         return file_name, file_content.encode("utf-8"), "text/plain"
     else:
         pytest.fail(f"Неизвестный параметр: {request.param}")

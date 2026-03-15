@@ -22,6 +22,8 @@ import pytest
 from fastapi.testclient import TestClient
 from http import HTTPStatus
 
+from tests.conftest import MockVectorDB
+
 
 class TestRootEndpoint:
     """
@@ -93,3 +95,44 @@ class TestUploadTXTEndpoint:
         )
 
         assert response.status_code == expected_status
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "file",
+        ["duplicate_txt"],
+        indirect=["file"]
+    )
+    async def test_post_upload_txt_duplicate_add_unique_data(
+        self,
+        client: TestClient,
+        file: Tuple[str, bytes, str],
+        test_vector_db: MockVectorDB
+    ):
+        filename, file_content, content_type = file
+        client.post(
+            "/upload-txt",
+            files={'file': (filename, file_content, content_type)}
+        )
+        assert test_vector_db.count_records() == 1
+
+    @pytest.mark.asyncio
+    async def test_post_upload_txt_add_only_new_data(
+        self,
+        client: TestClient,
+        added_records_file: Tuple[str, bytes, str],
+        new_data_file: Tuple[str, bytes, str],
+        test_vector_db: MockVectorDB
+    ):
+        filename, file_content, content_type = added_records_file
+        client.post(
+            "/upload-txt",
+            files={'file': (filename, file_content, content_type)}
+        )
+        db_records_count: int = test_vector_db.count_records()
+
+        filename, file_content, content_type = new_data_file
+        client.post(
+            "/upload-txt",
+            files={'file': (filename, file_content, content_type)}
+        )
+        assert test_vector_db.count_records() == db_records_count + 1
