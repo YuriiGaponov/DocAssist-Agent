@@ -105,8 +105,7 @@ def duplicate_txt_content() -> str:
 
 @pytest.fixture
 def oversized_txt_content() -> str:
-    content = "Это строка для тестирования ограничения размера. "
-    return content * (settings.UPLOAD_FILE_MAX_SIZE + 1)
+    return "x" * (settings.UPLOAD_FILE_MAX_SIZE + 1)
 
 
 @pytest.fixture
@@ -132,7 +131,7 @@ def new_data_file() -> Tuple[str, bytes, str]:
 
 @pytest.fixture(
     params=(
-        "sample_txt", "empty_txt", "duplicate_txt", "new_data_txt", "oversized"
+        "sample_txt", "empty_txt", "duplicate_txt", "oversized"
     )
 )
 def txt_file(

@@ -21,6 +21,7 @@ from typing import Tuple
 import pytest
 from fastapi.testclient import TestClient
 from http import HTTPStatus
+from httpx import Response
 
 from tests.conftest import MockVectorDB
 
@@ -72,6 +73,17 @@ class TestRootEndpoint:
 
 class TestUploadTXTEndpoint:
 
+    async def _get_response(
+        self,
+        client: TestClient,
+        file: Tuple[str, bytes, str]
+    ) -> Response:
+        filename, file_content, content_type = file
+        return client.post(
+            "/upload-txt",
+            files={'file': (filename, file_content, content_type)}
+        )
+
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "txt_file, expected_status",
@@ -88,13 +100,13 @@ class TestUploadTXTEndpoint:
         expected_status: int
     ) -> None:
 
-        filename, file_content, content_type = txt_file
-        response = client.post(
-            "/upload-txt",
-            files={'file': (filename, file_content, content_type)}
-        )
+        response = await self._get_response(client, txt_file)
 
         assert response.status_code == expected_status
+
+        if expected_status == HTTPStatus.OK:
+            json_response = response.json()
+            assert "message" in json_response
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -108,11 +120,9 @@ class TestUploadTXTEndpoint:
         txt_file: Tuple[str, bytes, str],
         test_vector_db: MockVectorDB
     ) -> None:
-        filename, file_content, content_type = txt_file
-        client.post(
-            "/upload-txt",
-            files={'file': (filename, file_content, content_type)}
-        )
+
+        response = await self._get_response(client, txt_file)
+        assert response.status_code == HTTPStatus.OK
         assert test_vector_db.count_records() == 1
 
     @pytest.mark.asyncio
@@ -126,11 +136,8 @@ class TestUploadTXTEndpoint:
         client: TestClient,
         txt_file: Tuple[str, bytes, str],
     ) -> None:
-        filename, file_content, content_type = txt_file
-        response = client.post(
-            "/upload-txt",
-            files={'file': (filename, file_content, content_type)}
-        )
+
+        response = await self._get_response(client, txt_file)
         assert response.status_code == HTTPStatus.CONTENT_TOO_LARGE
 
     @pytest.mark.asyncio
@@ -141,18 +148,12 @@ class TestUploadTXTEndpoint:
         new_data_file: Tuple[str, bytes, str],
         test_vector_db: MockVectorDB
     ) -> None:
-        filename, file_content, content_type = added_records_file
-        client.post(
-            "/upload-txt",
-            files={'file': (filename, file_content, content_type)}
-        )
+
+        await self._get_response(client, added_records_file)
         db_records_count: int = test_vector_db.count_records()
 
-        filename, file_content, content_type = new_data_file
-        client.post(
-            "/upload-txt",
-            files={'file': (filename, file_content, content_type)}
-        )
+        response = await self._get_response(client, new_data_file)
+        assert response.status_code == HTTPStatus.OK
         assert test_vector_db.count_records() == db_records_count + 1
 
     @pytest.mark.asyncio
@@ -161,10 +162,9 @@ class TestUploadTXTEndpoint:
         client: TestClient,
         jpg_file: Tuple[str, bytes, str],
     ) -> None:
-        filename, file_content, content_type = jpg_file
-        response = client.post(
-            "/upload-txt",
-            files={'file': (filename, file_content, content_type)}
-        )
 
+        response = await self._get_response(client, jpg_file)
         assert response.status_code == HTTPStatus.BAD_REQUEST
+
+        json_response = response.json()
+        assert "message" in json_response
