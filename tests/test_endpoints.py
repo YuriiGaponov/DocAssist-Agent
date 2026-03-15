@@ -116,6 +116,24 @@ class TestUploadTXTEndpoint:
         assert test_vector_db.count_records() == 1
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "txt_file",
+        ["oversized"],
+        indirect=["txt_file"]
+    )
+    async def test_post_upload_txt_oversized_content(
+        self,
+        client: TestClient,
+        txt_file: Tuple[str, bytes, str],
+    ) -> None:
+        filename, file_content, content_type = txt_file
+        response = client.post(
+            "/upload-txt",
+            files={'file': (filename, file_content, content_type)}
+        )
+        assert response.status_code == HTTPStatus.CONTENT_TOO_LARGE
+
+    @pytest.mark.asyncio
     async def test_post_upload_txt_add_only_new_data(
         self,
         client: TestClient,

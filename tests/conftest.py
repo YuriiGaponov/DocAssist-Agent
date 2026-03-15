@@ -25,6 +25,7 @@ from fastapi.testclient import TestClient
 
 from src.main import app
 from src.db import VectorDBInterface, get_vector_db
+from src.settings import settings
 
 
 class MockVectorDB(VectorDBInterface):
@@ -103,6 +104,12 @@ def duplicate_txt_content() -> str:
 
 
 @pytest.fixture
+def oversized_txt_content() -> str:
+    content = "Это строка для тестирования ограничения размера. "
+    return content * (settings.UPLOAD_FILE_MAX_SIZE + 1)
+
+
+@pytest.fixture
 def added_records_file() -> Tuple[str, bytes, str]:
     return (
         "added_records.txt",
@@ -124,13 +131,16 @@ def new_data_file() -> Tuple[str, bytes, str]:
 
 
 @pytest.fixture(
-    params=("sample_txt", "empty_txt", "duplicate_txt", "new_data_txt")
+    params=(
+        "sample_txt", "empty_txt", "duplicate_txt", "new_data_txt", "oversized"
+    )
 )
 def txt_file(
     request: FixtureRequest,
     sample_txt_content: str,
     empty_txt_content: str,
-    duplicate_txt_content: str
+    duplicate_txt_content: str,
+    oversized_txt_content: str
 ) -> Tuple[str, bytes, str]:
     file_name = ''
     file_content = ''
@@ -140,6 +150,8 @@ def txt_file(
         file_name, file_content = "empty.txt", empty_txt_content
     elif request.param == "duplicate_txt":
         file_name, file_content = "duplicate.txt", duplicate_txt_content
+    elif request.param == "oversized":
+        file_name, file_content = "oversized.txt", oversized_txt_content
     else:
         pytest.fail(f"Неизвестный параметр: {request.param}")
     return file_name, file_content.encode("utf-8"), "text/plain"
