@@ -22,13 +22,20 @@ from typing import Tuple
 import pytest
 from pytest import FixtureRequest
 from fastapi.testclient import TestClient
-
 from src.main import app
 from src.db import VectorDBInterface, get_vector_db
 from src.settings import settings
 
 
 class MockVectorDB(VectorDBInterface):
+    """Моковая реализация векторной БД для тестирования.
+
+    Позволяет:
+    - имитировать добавление записей;
+    - проверять количество сохранённых записей;
+    - тестировать логику сервиса без реальной БД.
+    """
+
     def __init__(self):
         self.storage = []
 
@@ -36,27 +43,53 @@ class MockVectorDB(VectorDBInterface):
         return "test_collection"
 
     def add_records(self, ids, documents, metadatas):
+        """Добавляет записи в моковое хранилище.
+
+        Args:
+            ids: список идентификаторов.
+            documents: список документов.
+            metadatas: список метаданных.
+
+        Returns:
+            dict: результат операции с количеством добавленных записей.
+        """
         for i, doc, meta in zip(ids, documents, metadatas):
             self.storage.append({"id": i, "doc": doc, "meta": meta})
         return {"message": f"Добавлено {len(ids)} записей", "success": True}
 
     def count_records(self) -> int:
+        """Возвращает количество записей в хранилище."""
         return len(self.storage)
 
 
 @pytest.fixture
-def client(test_vector_db: MockVectorDB):
+def test_vector_db():
+    """Возвращает экземпляр тестовой векторной БД.
+
+    Используется для подмены реальной БД в тестах.
     """
-    Фикстура для создания тестового клиента FastAPI.
+    return MockVectorDB()
+
+
+@pytest.fixture
+def client(test_vector_db: MockVectorDB):
+    """Фикстура для создания тестового клиента FastAPI.
 
     Создаёт экземпляр TestClient, привязанный к основному приложению (app),
     что позволяет отправлять HTTP‑запросы к эндпоинтам в рамках тестов.
 
-    Фикстура автоматически инициализируется перед каждым тестом,
-    который её использует, и закрывается после завершения теста.
+    Перед тестом:
+    - подменяет зависимость get_vector_db на моковую БД;
+    - создаёт клиент.
+
+    После теста:
+    - очищает подменённые зависимости.
+
+    Args:
+        test_vector_db (MockVectorDB): экземпляр моковой БД.
 
     Returns:
-        TestClient: Объект тестового клиента для взаимодействия
+        TestClient: объект тестового клиента для взаимодействия
                      с FastAPI‑приложением через HTTP.
 
     Пример использования в тесте:
@@ -72,12 +105,6 @@ def client(test_vector_db: MockVectorDB):
 
 
 @pytest.fixture
-def test_vector_db():
-    """Возвращает экземпляр тестовой векторной БД."""
-    return MockVectorDB()
-
-
-@pytest.fixture
 def sample_txt_content() -> str:
     """Тестовый TXT‑файл (3 абзаца, UTF‑8)."""
     return (
@@ -89,13 +116,13 @@ def sample_txt_content() -> str:
 
 @pytest.fixture
 def empty_txt_content() -> str:
-    """Тестовый TXT‑файл (3 абзаца, UTF‑8)."""
+    """Пустой текстовый файл."""
     return ''
 
 
 @pytest.fixture
 def duplicate_txt_content() -> str:
-    """Тестовый TXT‑файл (3 абзаца, UTF‑8)."""
+    """Тестовый TXT‑файл с повторяющимися абзацами."""
     return (
         "Абзац с одинаковыми данными. Один чанк.\n\n"
         "Абзац с одинаковыми данными. Один чанк.\n"
@@ -105,12 +132,13 @@ def duplicate_txt_content() -> str:
 
 @pytest.fixture
 def oversized_txt_content() -> str:
-    content = "Это строка для тестирования ограничения размера. "
-    return content * (settings.UPLOAD_FILE_MAX_SIZE + 1)
+    """Текстовый файл, превышающий лимит размера."""
+    return "x" * (settings.UPLOAD_FILE_MAX_SIZE + 1)
 
 
 @pytest.fixture
 def added_records_file() -> Tuple[str, bytes, str]:
+    """Файл с записями, ранее добавленными в БД."""
     return (
         "added_records.txt",
         "Записи, ранее добавленные в векторную базу данных.".encode("utf-8"),
@@ -120,6 +148,7 @@ def added_records_file() -> Tuple[str, bytes, str]:
 
 @pytest.fixture
 def new_data_file() -> Tuple[str, bytes, str]:
+    """Файл с новыми данными для добавления в БД."""
     return (
         "new_data.txt",
         (
@@ -131,9 +160,7 @@ def new_data_file() -> Tuple[str, bytes, str]:
 
 
 @pytest.fixture(
-    params=(
-        "sample_txt", "empty_txt", "duplicate_txt", "new_data_txt", "oversized"
-    )
+    params=("sample_txt", "empty_txt", "duplicate_txt", "oversized")
 )
 def txt_file(
     request: FixtureRequest,
@@ -142,8 +169,25 @@ def txt_file(
     duplicate_txt_content: str,
     oversized_txt_content: str
 ) -> Tuple[str, bytes, str]:
+    """Параметризованная фикстура для тестовых TXT‑файлов.
+
+    Поддерживает несколько сценариев:
+    - sample_txt: обычный текстовый файл;
+    - empty_txt: пустой файл;
+    - duplicate_txt: файл с повторяющимися блоками;
+    - oversized: файл, превышающий лимит размера.
+
+    Args:
+        request: объект запроса фикстуры;
+        sample_txt_content, empty_txt_content и др.:
+            содержимое файлов из других фикстур.
+
+    Returns:
+        Tuple[str, bytes, str]: имя файла, байты содержимого, MIME‑тип.
+    """
     file_name = ''
     file_content = ''
+
     if request.param == "sample_txt":
         file_name, file_content = "sample.txt", sample_txt_content
     elif request.param == "empty_txt":
@@ -154,13 +198,19 @@ def txt_file(
         file_name, file_content = "oversized.txt", oversized_txt_content
     else:
         pytest.fail(f"Неизвестный параметр: {request.param}")
+
     return file_name, file_content.encode("utf-8"), "text/plain"
 
 
 @pytest.fixture
 def jpg_file() -> Tuple[str, bytes, str]:
-    """Тестовый файл не‑текстового формата (JPEG)."""
-    # Миниатюрный валидный JPEG (1×1 пиксель, чёрный)
+    """Тестовый файл не‑текстового формата (JPEG).
+
+    Содержит миниатюрный валидный JPEG (1×1 пиксель, чёрный).
+
+    Returns:
+        Tuple[str, bytes, str]: имя файла, байты изображения, MIME‑тип.
+    """
     jpeg_data = (
         b'\xff\xd8\xff\xe0\x00\x10\x4a\x46\x49\x46\x00\x01\x01\x01'
         b'\x00\x48\x00\x48\x00\x00\xff\xdb\x00\x43\x00\x02\x01\x01'
