@@ -9,17 +9,36 @@ src/logger.py
 """
 
 import logging
+from logging import Logger
+from logging.handlers import RotatingFileHandler
 
 from src.settings import settings
 
 
-# Настройка базового конфигуратора логирования
-logging.basicConfig(
-    filename=f'{settings.LOG_PATH}/{settings.LOG_FILENAME}',
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
+# Обработчик с ротацией файлов
+handler = RotatingFileHandler(
+    f'{settings.LOG_DIR}/{settings.LOG_FILENAME}',
+    maxBytes=10*1024*1024,  # 10 МБ на файл
+    backupCount=5,             # максимум 5 файлов (всего ~50 МБ)
     encoding='utf-8'
 )
 
-# Создание именованного логгера для приложения
-app_logger = logging.getLogger('app_logger')
+# Фформат вывода логов
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+handler.setFormatter(formatter)
+
+
+# Настройка базового конфигуратора логирования
+logging.basicConfig(
+    handlers=[handler],
+    level=logging.DEBUG if settings.DEBUG else logging.INFO,
+)
+
+# Именованные логгеры для разных компонентов
+app_logger: Logger = logging.getLogger('app_logger')
+"""Логгер для общего логирования приложения."""
+
+db_logger: Logger = logging.getLogger('db_logger')
+"""Логгер для логирования операций с базой данных."""

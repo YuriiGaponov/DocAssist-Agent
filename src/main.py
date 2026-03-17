@@ -1,52 +1,68 @@
 """
-DocAssist‑Agent — AI‑агент для обработки запросов к внутренней
-документации через HTTP.
+DocAssist‑Agent — AI‑агент для обработки запросов к внутренней документации.
 
-Этот модуль реализует основное FastAPI‑приложение, которое:
-- принимает HTTP‑запросы с пользовательскими запросами;
-- определяет тип запроса (информационный, создание задачи,
-  добавление комментария);
-- взаимодействует с RAG‑модулем, state‑менеджером и
-  бизнес‑логикой;
-- возвращает структурированный ответ;
-- обеспечивает логирование и обработку ошибок.
+Модуль реализует FastAPI‑приложение, которое:
+- принимает HTTP‑запросы (POST /ask, GET /health);
+- валидирует входные данные;
+- определяет тип запроса;
+- взаимодействует с RAG‑модулем и state‑менеджером;
+- формирует и возвращает JSON‑ответ;
+- логирует действия и ошибки.
 
-Основные эндпоинты: (В РАЗРАБОТКЕ)
-- POST /ask — обработка пользовательского запроса (обязательные
-  поля: user_id, query);
-- GET /health — проверка работоспособности сервиса.
+Основные эндпоинты:
+- POST /ask: обработка запроса (поля user_id, query);
+- GET /health: проверка работоспособности.
 
-Логика работы:
-1. Валидация входных данных (user_id, query).
-2. Определение типа запроса по ключевым фразам.
-3. Делегирование обработки соответствующему компоненту
-   (RAG, task manager).
-4. Сохранение/обновление состояния пользователя (task_id,
-   история).
-5. Формирование и возврат JSON‑ответа.
-6. Логирование действия и возможных ошибок.
-
-Требования к окружению:
-- Python 3.10+;
-- зависимости из requirements.txt (FastAPI, uvicorn и др.);
-- папка docs/ с MD‑файлами документации.
-
-Запуск:
-uvicorn main:app --reload
-
-Автор: Yurii Gaponov
-Версия: 0.1.0
+Требования: Python 3.10+, зависимости из requirements.txt, папка docs/.
 """
 
-
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from src.logger import app_logger
-from src.routes import router
+from src.api.routes import router
+from src.db import get_vector_db
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Менеджер жизненного цикла FastAPI‑приложения.
+
+    При запуске:
+    - инициализирует векторную БД (создаёт коллекцию, если её нет);
+    - логирует успех или ошибку.
+
+    При завершении:
+    - логирует остановку приложения.
+
+    Args:
+        app: экземпляр FastAPI.
+
+    Yields:
+        None
+
+    Raises:
+        Exception: если инициализация БД завершилась ошибкой.
+    """
+    try:
+        vector_db = get_vector_db()
+        vector_db.get_or_create_collection()
+        app_logger.info('Коллекция векторов инициализирована.')
+        yield
+    except Exception as e:
+        app_logger.error(f'Ошибка при инициализации БД: {e}')
+        raise
+    finally:
+        app_logger.info('Приложение DocAssist‑Agent остановлено.')
+
+
+app = FastAPI(lifespan=lifespan)
+"""
+Экземпляр FastAPI с менеджером жизненного цикла (lifespan).
+Включает роутер с эндпоинтами /ask и /health.
+"""
 
 app.include_router(router)
-
 app_logger.info('Приложение DocAssist‑Agent запущено.')
